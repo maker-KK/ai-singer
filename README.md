@@ -1,4 +1,4 @@
-# 🎤 AI Singer — KK's Voice Clone Pipeline
+# 🎤 AI Singer — Voice Clone Pipeline
 
 > RVC(Retrieval-based Voice Conversion) 기반 AI 보컬 생성 파이프라인.  
 > 나의 목소리를 학습시켜, AI가 노래하게 만드는 프로젝트.
