@@ -17,25 +17,32 @@
 
 ## ⚡ 빠른 시작
 
+### GUI 모드 (추천)
+
 ```bash
 # 1. 클론
-git clone https://github.com/songkang71/ai-singer.git
+git clone https://github.com/maker-KK/ai-singer.git
 cd ai-singer
 
 # 2. 의존성 설치
 pip install -r requirements.txt
 
-# 3. 보컬 샘플 준비 (dataset/raw/ 에 WAV 파일 배치)
+# 3. GUI 실행
+KMP_DUPLICATE_LIB_OK=TRUE python app.py
+
+# 4. 브라우저에서 http://localhost:7860 접속
+```
+
+### CLI 모드
+
+```bash
+# 보컬 샘플 준비
 mkdir -p dataset/raw
 # cp your_vocal_samples.wav dataset/raw/
 
-# 4. 모델 학습
+# 모델 학습 → 변환 → 데모 생성
 python scripts/train.py
-
-# 5. 음성 변환
 python scripts/convert.py
-
-# 6. 데모곡 생성
 python scripts/demo.py
 ```
 
@@ -76,6 +83,7 @@ python scripts/demo.py
 ```
 ai-singer/
 ├── README.md               # 이 파일
+├── app.py                   # 🖥️ Gradio GUI (메인 앱)
 ├── LICENSE                  # MIT License
 ├── requirements.txt         # Python 의존성
 ├── configs/
