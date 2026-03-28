@@ -90,27 +90,9 @@ ai-singer/
 │   ├── generate_full.py     # 🎵 풀 버전 데모곡 생성
 │   ├── generate_simple.py   # 간편 버전 데모곡 생성
 │   └── demo.py              # ⚡ 빠른 데모 생성
-├── lyrics/
-│   └── digital_nomad.md     # 데모곡 "디지털 유목민" 가사
 └── examples/
     └── README.md            # 출력 예시 설명
 ```
-
----
-
-## 🎵 데모곡: 디지털 유목민 (Digital Nomad)
-
-| 항목 | 내용 |
-|------|------|
-| **장르** | 감성적 스토리 락 |
-| **BPM** | 85 |
-| **키** | C# minor |
-| **길이** | 2분 30초 |
-| **주제** | AI와 인간의 경계, 디지털 시대의 정체성 |
-
-> *"나는 누구인가, 기계인가 인간인가 / 데이터 바다를 헤엄치는 유목민"*
-
-전체 가사: [`lyrics/digital_nomad.md`](lyrics/digital_nomad.md)
 
 ---
 
