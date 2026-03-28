@@ -1,0 +1,35 @@
+{
+  "model_name": "kk_vocal_model",
+  "sample_rate": 44100,
+  "hop_length": 512,
+  "n_fft": 2048,
+  "mel_channels": 80,
+  
+  "training": {
+    "batch_size": 4,
+    "epochs": 100,
+    "learning_rate": 0.0001,
+    "save_every": 10,
+    "validation_split": 0.1
+  },
+  
+  "data": {
+    "input_dir": "dataset/raw",
+    "output_dir": "dataset/processed",
+    "model_dir": "models/kk_vocal",
+    "log_dir": "logs/kk_vocal"
+  },
+  
+  "hardware": {
+    "device": "mps",
+    "num_workers": 2,
+    "pin_memory": true
+  },
+  
+  "augmentation": {
+    "noise": false,
+    "pitch_shift": true,
+    "time_stretch": true,
+    "volume_normalize": true
+  }
+}

@@ -1,0 +1,30 @@
+# 불타는 금요일 초고속 학습 설정
+model_name: "kk_vocal_fast"
+sample_rate: 44100
+hop_length: 256  # 더 빠른 처리
+n_fft: 1024      # 감소된 FFT
+mel_channels: 64  # 감소된 멜 채널
+
+training:
+  batch_size: 1           # 메모리 최소화
+  epochs: 30              # 빠른 결과용
+  learning_rate: 0.0002   # 증가된 학습률
+  save_every: 5          # 빈번한 체크포인트
+  early_stopping_patience: 3
+  
+data:
+  input_dir: "dataset/raw"
+  output_dir: "dataset/processed_fast"
+  model_dir: "models/kk_vocal_fast"
+  log_dir: "logs/kk_vocal_fast"
+
+hardware:
+  device: "mps"
+  num_workers: 4          # 병렬 처리 증가
+  pin_memory: true
+  mixed_precision: true   # FP16 활성화
+
+optimization:
+  gradient_checkpointing: true
+  gradient_accumulation_steps: 2
+  max_grad_norm: 1.0

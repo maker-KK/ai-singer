@@ -1,0 +1,38 @@
+# Audio files
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+
+# Model weights
+*.pth
+*.pt
+*.onnx
+*.safetensors
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Environment & OS
+.env
+.DS_Store
+Thumbs.db
+
+# Project directories
+logs/
+dataset/raw/
+models/
+converted_results/
+vocal_test/
+
+# Allow example metadata
+!examples/*.json
+!examples/*.md
