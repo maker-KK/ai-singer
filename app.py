@@ -14,6 +14,10 @@ import os
 import json
 import time
 import tempfile
+import urllib.request
+import urllib.error
+import urllib.parse
+import http.client
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -49,8 +53,12 @@ BASE = Path(__file__).parent
 DATASET_DIR = BASE / "dataset" / "raw"
 MODEL_DIR = BASE / "models"
 OUTPUT_DIR = BASE / "outputs"
-for d in [DATASET_DIR, MODEL_DIR, OUTPUT_DIR]:
+SUNO_OUTPUT_DIR = BASE / "outputs" / "suno"
+for d in [DATASET_DIR, MODEL_DIR, OUTPUT_DIR, SUNO_OUTPUT_DIR]:
     d.mkdir(parents=True, exist_ok=True)
+
+# ─── Suno 설정 ───────────────────────────────────
+# Suno 곡은 suno.com에서 직접 생성 후 URL로 가져옴
 
 DEVICE = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
@@ -396,6 +404,93 @@ def generate_demo(style, duration_sec, progress=gr.Progress()):
     return str(out_path), fig_path, info
 
 
+# ─── Tab 5: Suno 곡 가져오기 ─────────────────────
+# Suno 웹에서 생성한 곡을 URL로 가져와서 RVC 파이프라인에 연결
+
+
+def suno_download_from_url(url: str, progress=gr.Progress()):
+    """Suno 곡 URL에서 오디오를 다운로드합니다.
+    
+    지원 형식:
+    - https://suno.com/song/UUID
+    - https://cdn1.suno.ai/UUID.mp3
+    - 직접 MP3 URL
+    """
+    import re
+    url = url.strip()
+    if not url:
+        return None, None, "❌ URL을 입력해주세요."
+
+    progress(0.1, desc="🔗 URL 분석 중...")
+
+    # Suno 곡 페이지 URL → CDN URL 변환
+    song_id_match = re.search(r'suno\.com/song/([a-f0-9-]+)', url)
+    if song_id_match:
+        song_id = song_id_match.group(1)
+        audio_url = f"https://cdn1.suno.ai/{song_id}.mp3"
+    elif re.match(r'https?://cdn\d*\.suno\.ai/.+\.mp3', url):
+        audio_url = url
+    elif url.startswith("http") and url.endswith(".mp3"):
+        audio_url = url
+    else:
+        # Suno 페이지에서 오디오 URL 추출 시도
+        song_id_match = re.search(r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})', url)
+        if song_id_match:
+            song_id = song_id_match.group(1)
+            audio_url = f"https://cdn1.suno.ai/{song_id}.mp3"
+        else:
+            return None, None, "❌ 유효한 Suno URL이 아닙니다.\n\n지원 형식:\n- `https://suno.com/song/UUID`\n- `https://cdn1.suno.ai/UUID.mp3`"
+
+    progress(0.3, desc="💾 오디오 다운로드 중...")
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # URL에서 song ID 추출
+    id_match = re.search(r'([a-f0-9-]{36})', audio_url)
+    short_id = id_match.group(1)[:8] if id_match else "suno"
+    save_name = f"{timestamp}_{short_id}.mp3"
+    save_path = SUNO_OUTPUT_DIR / save_name
+
+    try:
+        req = urllib.request.Request(audio_url, headers={
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+        })
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = resp.read()
+        if len(data) < 1000:
+            return None, None, f"❌ 다운로드된 파일이 너무 작습니다 ({len(data)} bytes). URL을 확인해주세요."
+        save_path.write_bytes(data)
+    except Exception as e:
+        return None, None, f"❌ 다운로드 실패: {e}\nURL: {audio_url}"
+
+    progress(0.9, desc="✅ 완료!")
+
+    size_kb = save_path.stat().st_size / 1024
+    status_md = f"""### ✅ Suno 곡 다운로드 완료
+
+| 항목 | 값 |
+|------|-----|
+| **파일** | `{save_path}` |
+| **크기** | {size_kb:.0f} KB |
+| **원본 URL** | {audio_url} |
+
+🎤 **RVC 음성 변환 탭**에서 위 파일로 음성 변환할 수 있습니다.
+"""
+    return str(save_path), str(save_path), status_md
+
+
+def suno_list_outputs():
+    """생성된 Suno 곡 목록"""
+    files = sorted(SUNO_OUTPUT_DIR.glob("*.mp3"), key=lambda f: f.stat().st_mtime, reverse=True)
+    if not files:
+        return "아직 생성된 Suno 곡이 없습니다."
+    lines = ["| 파일명 | 크기 | 생성일시 |", "|--------|------|---------|"]
+    for f in files[:10]:
+        size = f.stat().st_size / 1024
+        mtime = datetime.fromtimestamp(f.stat().st_mtime).strftime("%m-%d %H:%M")
+        lines.append(f"| `{f.name}` | {size:.0f} KB | {mtime} |")
+    return "\n".join(lines)
+
+
 # ─── 모델 목록 ───────────────────────────────────
 def list_models():
     models = list(MODEL_DIR.glob("*.pth"))
@@ -490,6 +585,65 @@ with gr.Blocks(theme=THEME, title="🎤 AI Singer Studio") as app:
                         generate_demo,
                         inputs=[style_dropdown, dur_slider],
                         outputs=[demo_audio, demo_img, demo_info],
+                    )
+
+                # ── Tab 5: Suno 곡 가져오기
+                with gr.Tab("🎹 Suno 곡 가져오기"):
+                    gr.Markdown(
+                        "### 🎹 Suno에서 만든 곡을 가져옵니다\n"
+                        "> [suno.com](https://suno.com)에서 곡을 생성한 뒤, 곡 URL을 아래에 붙여넣으세요.\n"
+                        "> 다운로드된 곡은 `outputs/suno/`에 저장되며 **RVC 음성 변환 탭**에서 바로 사용 가능합니다."
+                    )
+
+                    with gr.Row():
+                        with gr.Column(scale=3):
+                            suno_url_input = gr.Textbox(
+                                label="🔗 Suno 곡 URL",
+                                placeholder="https://suno.com/song/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                                lines=1,
+                            )
+                            gr.Markdown(
+                                "**지원 형식:**\n"
+                                "- `https://suno.com/song/UUID` — Suno 곡 페이지 URL\n"
+                                "- `https://cdn1.suno.ai/UUID.mp3` — 직접 CDN URL\n"
+                                "- 기타 MP3 직접 링크"
+                            )
+                        with gr.Column(scale=1):
+                            gr.Markdown("#### 📂 다운로드된 Suno 곡")
+                            suno_file_list = gr.Markdown(suno_list_outputs())
+                            suno_refresh_btn = gr.Button("🔄 목록 새로고침", size="sm")
+
+                    suno_dl_btn = gr.Button("📥 곡 다운로드", variant="primary", size="lg")
+
+                    with gr.Row():
+                        suno_audio_out = gr.Audio(
+                            label="🔊 다운로드된 곡 (재생)",
+                            type="filepath",
+                        )
+                        with gr.Column():
+                            suno_status = gr.Markdown("*Suno 곡 URL을 입력하고 다운로드 버튼을 누르세요.*")
+
+                    # RVC 탭 연결용 — 숨겨진 경로 출력
+                    suno_filepath_out = gr.Textbox(
+                        label="📁 파일 경로 (RVC 음성 변환에서 사용)",
+                        interactive=False,
+                        placeholder="다운로드 후 파일 경로가 여기 표시됩니다.",
+                    )
+
+                    # 이벤트 연결
+                    suno_dl_btn.click(
+                        suno_download_from_url,
+                        inputs=[suno_url_input],
+                        outputs=[suno_audio_out, suno_filepath_out, suno_status],
+                    ).then(suno_list_outputs, outputs=suno_file_list)
+
+                    suno_refresh_btn.click(suno_list_outputs, outputs=suno_file_list)
+
+                    # RVC 탭의 convert_audio 입력에 파일 경로 직접 연결
+                    suno_filepath_out.change(
+                        fn=lambda p: p,
+                        inputs=[suno_filepath_out],
+                        outputs=[convert_audio],
                     )
 
     gr.Markdown("---\n*Built with 🔥 by KK & Chloe 🦞 — [GitHub](https://github.com/maker-KK/ai-singer)*")
